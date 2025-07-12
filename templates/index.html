@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drishya - Product Image Replacement Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Inter', sans-serif;
+            background: #000000;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 105, 180, 0.2) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+            color: #ffffff;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(45deg, transparent 30%, rgba(120, 119, 198, 0.03) 50%, transparent 70%),
+                linear-gradient(-45deg, transparent 30%, rgba(255, 105, 180, 0.03) 50%, transparent 70%);
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(15, 15, 15, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(120, 119, 198, 0.2);
+            border-radius: 20px;
+            box-shadow: 
+                0 25px 50px rgba(0, 0, 0, 0.5),
+                0 0 100px rgba(120, 119, 198, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+            animation: slideUp 0.8s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #7877c6 0%, #ff69b4 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(255, 255, 255, 0.05) 10px,
+                rgba(255, 255, 255, 0.05) 20px
+            );
+            animation: headerPattern 20s linear infinite;
+        }
+        
+        @keyframes headerPattern {
+            0% {
+                transform: translateX(-50px);
+            }
+            100% {
+                transform: translateX(0px);
+            }
+        }
+        
+        .header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 2;
+        }
+        
+        .header .subtitle {
+            margin: 0;
+            opacity: 0.95;
+            font-size: 1.1rem;
+            font-weight: 400;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            font-weight: 500;
+            z-index: 3;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .content {
+            padding: 2rem;
+        }
+        
+        .step {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 2px solid rgba(120, 119, 198, 0.2);
+            border-radius: 15px;
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .step::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, rgba(120, 119, 198, 0.5), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .step.active {
+            border-color: #7877c6;
+            background: rgba(120, 119, 198, 0.05);
+            box-shadow: 0 0 30px rgba(120, 119, 198, 0.1);
+        }
+        
+        .step.active::before {
+            transform: translateX(0);
+        }
+        
+        .step h2 {
+            margin: 0 0 1rem 0;
+            color: #ffffff;
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #7877c6 0%, #ff69b4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .step p {
+            margin: 0 0 1rem 0;
+            color: #a0a0a0;
+            font-size: 0.95rem;
+        }
+        
+        .file-upload {
+            border: 2px dashed rgba(120, 119, 198, 0.4);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(25, 25, 25, 0.5);
+            backdrop-filter: blur(5px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .file-upload::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, rgba(120, 119, 198, 0.1) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+        }
+        
+        .file-upload:hover {
+            border-color: #7877c6;
+            background: rgba(120, 119, 198, 0.05);
+            transform: translateY(-2px);
+        }
+        
+        .file-upload:hover::before {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .file-upload.dragover {
+            border-color: #ff69b4;
+            background: rgba(255, 105, 180, 0.05);
+            box-shadow: 0 0 30px rgba(255, 105, 180, 0.2);
+        }
+        
+        .file-upload p {
+            position: relative;
+            z-index: 2;
+            margin: 0.5rem 0;
+            color: #e0e0e0;
+        }
+        
+        .file-upload p:first-child {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #7877c6 0%, #ff69b4 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(120, 119, 198, 0.3);
+        }
+        
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn:disabled {
+            background: rgba(60, 60, 60, 0.8);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn:disabled::before {
+            display: none;
+        }
+        
+        .btn-secondary {
+            background: rgba(60, 60, 60, 0.8);
+            border: 1px solid rgba(120, 119, 198, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(80, 80, 80, 0.9);
+            border-color: #7877c6;
+        }
+        
+        .canvas-container {
+            border: 2px solid rgba(120, 119, 198, 0.3);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 1rem 0;
+            display: inline-block;
+            background: rgba(25, 25, 25, 0.8);
+            backdrop-filter: blur(10px);
+        }
+        
+        .image-preview {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .control-group {
+            background: rgba(25, 25, 25, 0.8);
+            padding: 1rem;
+            border: 1px solid rgba(120, 119, 198, 0.2);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .control-group:hover {
+            border-color: rgba(120, 119, 198, 0.4);
+            background: rgba(30, 30, 30, 0.9);
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #e0e0e0;
+            font-size: 0.95rem;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            margin: 0.5rem 0;
+            height: 6px;
+            background: rgba(120, 119, 198, 0.2);
+            border-radius: 3px;
+            outline: none;
+            appearance: none;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #7877c6 0%, #ff69b4 100%);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #7877c6 0%, #ff69b4 100%);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-group input[type="checkbox"] {
+            margin-right: 0.5rem;
+            width: 16px;
+            height: 16px;
+            accent-color: #7877c6;
+        }
+        
+        .control-group input[type="radio"] {
+            margin-right: 0.5rem;
+            accent-color: #7877c6;
+        }
+        
+        .control-group small {
+            color: #a0a0a0;
+            font-size: 0.85rem;
+            display: block;
+            margin-top: 0.25rem;
+        }
+        
+        .results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .result-item {
+            text-align: center;
+            background: rgba(25, 25, 25, 0.6);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid rgba(120, 119, 198, 0.2);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        
+        .result-item:hover {
+            border-color: rgba(120, 119, 198, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .result-item h3 {
+            margin: 0 0 1rem 0;
+            color: #ffffff;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .error {
+            background: rgba(220, 53, 69, 0.1);
+            color: #ff6b6b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border: 1px solid rgba(220, 53, 69, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .success {
+            background: rgba(40, 167, 69, 0.1);
+            color: #4caf50;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #a0a0a0;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(120, 119, 198, 0.2);
+            border-top: 4px solid #7877c6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .coordinates {
+            background: rgba(25, 25, 25, 0.8);
+            color: #e0e0e0;
+            padding: 0.5rem;
+            border-radius: 6px;
+            margin: 0.5rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            border: 1px solid rgba(120, 119, 198, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .results {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .content {
+                padding: 1rem;
+            }
+            
+            .step {
+                padding: 1rem;
+            }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(25, 25, 25, 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #7877c6 0%, #ff69b4 100%);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #6b6bb6 0%, #e55aa0 100%);
+        }
+        
+        /* Smooth transitions for all interactive elements */
+        * {
+            transition: all 0.3s ease;
+        }
+        
+        input, button, .step, .file-upload {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/logout" class="logout-btn">Logout</a>
+            <h1>🖼️ Drishya</h1>
+            <p class="subtitle">AI-powered product replacement using Meta's Segment Anything Model (SAM)</p>
+        </div>
+        
+        <div class="content">
+            <!-- Step 1: Upload Image -->
+            <div class="step active" id="step1">
+                <h2>Step 1: Upload Image</h2>
+                <p>Upload an image containing a product you want to replace</p>
+                
+                <div class="file-upload" id="imageUpload">
+                    <p>📁 Click to upload or drag and drop an image</p>
+                    <p style="font-size: 0.9rem; color: #a0a0a0;">Supported formats: JPG, JPEG, PNG</p>
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                </div>
+                
+                <div id="imagePreview" class="hidden">
+                    <img id="uploadedImage" class="image-preview" alt="Uploaded image">
+                </div>
+            </div>
+            
+            <!-- Step 2: Draw Bounding Box -->
+            <div class="step" id="step2">
+                <h2>Step 2: Draw Bounding Box</h2>
+                <p>Draw a rectangle around the product you want to replace</p>
+                
+                <div id="canvasContainer" class="hidden">
+                    <canvas id="drawingCanvas"></canvas>
+                    <div class="coordinates" id="coordinates">Click and drag to draw a bounding box</div>
+                    <button class="btn" id="generateMaskBtn" disabled>Generate Mask</button>
+                    <button class="btn btn-secondary" id="clearBoxBtn">Clear Box</button>
+                </div>
+            </div>
+            
+            <!-- Step 3: Mask Generated -->
+            <div class="step" id="step3">
+                <h2>Step 3: Mask Generated</h2>
+                <p>Review the generated mask and proceed to product replacement</p>
+                
+                <div id="maskResults" class="results hidden">
+                    <div class="result-item">
+                        <h3>Original Image</h3>
+                        <img id="originalForMask" class="image-preview" alt="Original image">
+                    </div>
+                    <div class="result-item">
+                        <h3>Generated Mask</h3>
+                        <img id="maskVisualization" class="image-preview" alt="Mask visualization">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 4: Replace Product -->
+            <div class="step" id="step4">
+                <h2>Step 4: Replace Product</h2>
+                <p>Upload a new product image and adjust settings</p>
+                
+                <div class="file-upload" id="productUpload">
+                    <p>📁 Upload New Product Image</p>
+                    <input type="file" id="productInput" accept="image/*" style="display: none;">
+                </div>
+                
+                <div id="productPreview" class="hidden">
+                    <img id="productImage" class="image-preview" alt="Product image" style="max-width: 200px;">
+                </div>
+                
+                <div class="controls" id="replacementControls" style="display: none;">
+                    <div class="control-group">
+                        <label for="scaleSlider">Product Scale: <span id="scaleValue">1.0</span></label>
+                        <input type="range" id="scaleSlider" min="0.5" max="2.0" step="0.05" value="1.0">
+                        <small>Control product size relative to mask (updates in real-time)</small>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="useBlending" checked>
+                            Use Edge Blending
+                        </label>
+                        <small>Enable advanced edge blending</small>
+                        
+                        <div id="featherControls">
+                            <label for="featherSlider">Edge Feathering: <span id="featherValue">15</span></label>
+                            <input type="range" id="featherSlider" min="0" max="30" step="1" value="15">
+                            <small>Updates in real-time</small>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="enableColorGrading" checked>
+                            Enable Color Grading
+                        </label>
+                        <small>Apply color adjustment to match background</small>
+                        
+                        <div id="colorGradingControls">
+                            <label for="colorStrengthSlider">Color Grade Strength: <span id="colorStrengthValue">0.5</span></label>
+                            <input type="range" id="colorStrengthSlider" min="0.0" max="1.0" step="0.05" value="0.5">
+                            <small>Updates in real-time</small>
+
+                            <label>
+                                <input type="radio" name="gradingMethod" value="Match Target Area" checked>
+                                Match Target Area (updates in real-time)
+                            </label>
+                            <label>
+                                <input type="radio" name="gradingMethod" value="Match Entire Image">
+                                Match Entire Image (updates in real-time)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn" id="replaceProductBtn" style="display: none;">Replace Product</button>
+            </div>
+            
+            <!-- Results -->
+            <div class="step" id="resultsStep" style="display: none;">
+                <h2>Results</h2>
+                
+                <div id="finalResults" class="results">
+                    <div class="result-item">
+                        <h3>Original Image</h3>
+                        <img id="finalOriginal" class="image-preview" alt="Original image">
+                    </div>
+                    <div class="result-item">
+                        <h3>Replaced Product</h3>
+                        <img id="finalResult" class="image-preview" alt="Final result">
+                        <br>
+                        <button class="btn" id="downloadBtn">Download Final Image</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Loading indicator -->
+            <div id="loadingIndicator" class="loading hidden">
+                <div class="spinner"></div>
+                <p id="loadingText">Processing...</p>
+            </div>
+            
+            <!-- Error/Success messages -->
+            <div id="messageContainer"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drishya - Product Image Replacement Tool</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2.5rem;
+        }
+        
+        .header .subtitle {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .content {
+            padding: 2rem;
+        }
+        
+        .step {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .step.active {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .step h2 {
+            margin: 0 0 1rem 0;
+            color: #333;
+            font-size: 1.5rem;
+        }
+        
+        .step p {
+            margin: 0 0 1rem 0;
+            color: #666;
+        }
+        
+        .file-upload {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        .file-upload:hover {
+            border-color: #667eea;
+        }
+        
+        .file-upload.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .canvas-container {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 1rem 0;
+            display: inline-block;
+        }
+        
+        .image-preview {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .control-group {
+            background: white;
+            padding: 1rem;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+        
+        .control-group input[type="checkbox"] {
+            margin-right: 0.5rem;
+        }
+        
+        .results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .result-item {
+            text-align: center;
+        }
+        
+        .result-item h3 {
+            margin: 0 0 1rem 0;
+            color: #333;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+            border: 1px solid #fcc;
+        }
+        
+        .success {
+            background: #efe;
+            color: #363;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+            border: 1px solid #cfc;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .coordinates {
+            background: #e9ecef;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+            font-family: monospace;
+        }
+        
+        @media (max-width: 768px) {
+            .results {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/logout" class="logout-btn">Logout</a>
+            <h1>🖼️ Drishya</h1>
+            <p class="subtitle">AI-powered product replacement using Meta's Segment Anything Model (SAM)</p>
+        </div>
+        
+        <div class="content">
+            <div class="step active" id="step1">
+                <h2>Step 1: Upload Image</h2>
+                <p>Upload an image containing a product you want to replace</p>
+                
+                <div class="file-upload" id="imageUpload">
+                    <p>📁 Click to upload or drag and drop an image</p>
+                    <p style="font-size: 0.9rem; color: #666;">Supported formats: JPG, JPEG, PNG</p>
+                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                </div>
+                
+                <div id="imagePreview" class="hidden">
+                    <img id="uploadedImage" class="image-preview" alt="Uploaded image">
+                </div>
+            </div>
+            
+            <div class="step" id="step2">
+                <h2>Step 2: Draw Bounding Box</h2>
+                <p>Draw a rectangle around the product you want to replace</p>
+                
+                <div id="canvasContainer" class="hidden">
+                    <canvas id="drawingCanvas"></canvas>
+                    <div class="coordinates" id="coordinates">Click and drag to draw a bounding box</div>
+                    <button class="btn" id="generateMaskBtn" disabled>Generate Mask</button>
+                    <button class="btn btn-secondary" id="clearBoxBtn">Clear Box</button>
+                </div>
+            </div>
+            
+            <div class="step" id="step3">
+                <h2>Step 3: Mask Generated</h2>
+                <p>Review the generated mask and proceed to product replacement</p>
+                
+                <div id="maskResults" class="results hidden">
+                    <div class="result-item">
+                        <h3>Original Image</h3>
+                        <img id="originalForMask" class="image-preview" alt="Original image">
+                    </div>
+                    <div class="result-item">
+                        <h3>Generated Mask</h3>
+                        <img id="maskVisualization" class="image-preview" alt="Mask visualization">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step" id="step4">
+                <h2>Step 4: Replace Product</h2>
+                <p>Upload a new product image and adjust settings</p>
+                
+                <div class="file-upload" id="productUpload">
+                    <p>📁 Upload New Product Image</p>
+                    <input type="file" id="productInput" accept="image/*" style="display: none;">
+                </div>
+                
+                <div id="productPreview" class="hidden">
+                    <img id="productImage" class="image-preview" alt="Product image" style="max-width: 200px;">
+                </div>
+                
+                <div class="controls" id="replacementControls" style="display: none;">
+                    <div class="control-group">
+                        <label for="scaleSlider">Product Scale: <span id="scaleValue">1.0</span></label>
+                        <input type="range" id="scaleSlider" min="0.5" max="2.0" step="0.05" value="1.0">
+                        <small>Control product size relative to mask (updates in real-time)</small>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="useBlending" checked>
+                            Use Edge Blending
+                        </label>
+                        <small>Enable advanced edge blending</small>
+                        
+                        <div id="featherControls">
+                            <label for="featherSlider">Edge Feathering: <span id="featherValue">15</span></label>
+                            <input type="range" id="featherSlider" min="0" max="30" step="1" value="15">
+                            <small>Updates in real-time</small>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="enableColorGrading" checked>
+                            Enable Color Grading
+                        </label>
+                        <small>Apply color adjustment to match background</small>
+                        
+                        <div id="colorGradingControls">
+                            <label for="colorStrengthSlider">Color Grade Strength: <span id="colorStrengthValue">0.5</span></label>
+                            <input type="range" id="colorStrengthSlider" min="0.0" max="1.0" step="0.05" value="0.5">
+                            <small>Updates in real-time</small>
+
+                            <label>
+                                <input type="radio" name="gradingMethod" value="Match Target Area" checked>
+                                Match Target Area (updates in real-time)
+                            </label>
+                            <label>
+                                <input type="radio" name="gradingMethod" value="Match Entire Image">
+                                Match Entire Image (updates in real-time)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn" id="replaceProductBtn" style="display: none;">Replace Product</button>
+            </div>
+            
+            <div class="step" id="resultsStep" style="display: none;">
+                <h2>Results</h2>
+                
+                <div id="finalResults" class="results">
+                    <div class="result-item">
+                        <h3>Original Image</h3>
+                        <img id="finalOriginal" class="image-preview" alt="Original image">
+                    </div>
+                    <div class="result-item">
+                        <h3>Replaced Product</h3>
+                        <img id="finalResult" class="image-preview" alt="Final result">
+                        <br>
+                        <button class="btn" id="downloadBtn">Download Final Image</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="loadingIndicator" class="loading hidden">
+                <div class="spinner"></div>
+                <p id="loadingText">Processing...</p>
+            </div>
+            
+            <div id="messageContainer"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html> -->
