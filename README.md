@@ -71,3 +71,71 @@ The SAM model weights (~375MB) will be automatically downloaded on first use and
 - Fallback to CPU if GPU unavailable
 - Model loading time: 2-3 minutes on first run
 - Processing time: 5-15 seconds per image
+
+## Railway Deployment
+
+This app is ready for deployment on Railway. Follow these steps:
+
+### 1. Prepare for Deployment
+
+The app includes all necessary configuration files:
+- `railway.json` - Railway deployment configuration
+- `Procfile` - Process definition for Railway
+- `startup.py` - Production startup script with Gunicorn
+- `.env.example` - Environment variables template
+
+### 2. Deploy to Railway
+
+1. **Connect Repository**:
+   - Go to [Railway](https://railway.app)
+   - Create a new project from your GitHub repository
+
+2. **Set Environment Variables**:
+   ```
+   SECRET_KEY=your-super-secret-key-here
+   APP_PASSWORD=your-secure-password
+   FLASK_ENV=production
+   PORT=5000
+   MODEL_CACHE_DIR=/tmp/drishya_models
+   TEMP_DIR=/tmp/drishya_temp
+   ```
+
+3. **Deploy**:
+   - Railway will automatically detect the configuration
+   - The app will build and deploy using the startup script
+   - Model weights will be downloaded on first startup (may take 2-3 minutes)
+
+### 3. Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `SECRET_KEY` | Flask secret key for sessions | `your-secret-key-change-this` | ✅ |
+| `APP_PASSWORD` | Application access password | `setuftw` | ✅ |
+| `FLASK_ENV` | Flask environment | `development` | ✅ |
+| `PORT` | Port for the application | `5000` | ✅ |
+| `MODEL_CACHE_DIR` | Directory for model storage | `/tmp/drishya_models` | ❌ |
+| `TEMP_DIR` | Directory for temporary files | `/tmp/drishya_temp` | ❌ |
+
+### 4. Health Check
+
+The app includes a comprehensive health check endpoint at `/health` that provides:
+- System information (CPU, memory, disk usage)
+- Model loading status
+- Directory accessibility
+- Environment details
+
+### 5. Production Features
+
+- **Gunicorn WSGI Server**: Production-ready server with proper worker management
+- **Environment Configuration**: All settings configurable via environment variables
+- **Automatic Model Download**: SAM model weights downloaded and cached automatically
+- **Health Monitoring**: Detailed health check for Railway monitoring
+- **Error Handling**: Robust error handling for production deployment
+- **Resource Management**: Optimized for Railway's resource constraints
+
+### 6. Troubleshooting
+
+- **Model Loading Issues**: Check logs for download progress and errors
+- **Memory Issues**: Model requires ~2GB RAM, ensure adequate Railway plan
+- **Timeout Issues**: Initial startup may take 2-3 minutes for model download
+- **Health Check**: Use `/health` endpoint to diagnose issues

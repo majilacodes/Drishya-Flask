@@ -14,16 +14,20 @@ from werkzeug.utils import secure_filename
 import tempfile
 import uuid
 import time
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Suppress the torch.classes warning
 warnings.filterwarnings("ignore", message="Examining the path of torch.classes")
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this'  # Change this in production
+app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-this')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Create temp directory for storing images
-TEMP_DIR = os.path.join(tempfile.gettempdir(), 'drishya_temp')
+TEMP_DIR = os.getenv('TEMP_DIR', os.path.join(tempfile.gettempdir(), 'drishya_temp'))
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 # Global variables for model
@@ -44,8 +48,12 @@ def load_model():
     model_url = "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth"
 
     # Use a persistent directory for model storage
-    home_dir = os.path.expanduser("~")
-    model_dir = os.path.join(home_dir, ".cache", "drishya", "models")
+    model_cache_dir = os.getenv('MODEL_CACHE_DIR')
+    if model_cache_dir:
+        model_dir = os.path.join(model_cache_dir, "models")
+    else:
+        home_dir = os.path.expanduser("~")
+        model_dir = os.path.join(home_dir, ".cache", "drishya", "models")
     os.makedirs(model_dir, exist_ok=True)
     checkpoint_path = os.path.join(model_dir, model_filename)
 
@@ -132,7 +140,8 @@ def load_model():
 
 def check_password(password):
     """Check if the provided password is correct"""
-    return password == "setuftw"
+    app_password = os.getenv('APP_PASSWORD', 'setuftw')
+    return password == app_password
 
 def get_session_id():
     """Get or create a session ID"""
@@ -595,14 +604,60 @@ def logout():
 
 @app.route('/health')
 def health_check():
-    """Health check endpoint"""
-    return jsonify({
-        "status": "healthy",
-        "service": "drishya",
-        "model": "SAM",
-        "version": "1.0.0",
-        "model_loaded": model_loaded
-    })
+    """Enhanced health check endpoint for Railway monitoring"""
+    import psutil
+    import platform
+
+    try:
+        # Basic health status
+        health_status = {
+            "status": "healthy",
+            "service": "drishya",
+            "model": "SAM",
+            "version": "1.0.0",
+            "timestamp": time.time(),
+            "model_loaded": model_loaded,
+            "environment": os.getenv('RAILWAY_ENVIRONMENT', 'development')
+        }
+
+        # System information
+        health_status["system"] = {
+            "platform": platform.system(),
+            "python_version": platform.python_version(),
+            "cpu_count": psutil.cpu_count(),
+            "memory_total_gb": round(psutil.virtual_memory().total / (1024**3), 2),
+            "memory_available_gb": round(psutil.virtual_memory().available / (1024**3), 2),
+            "disk_usage_percent": psutil.disk_usage('/').percent
+        }
+
+        # Check critical directories
+        health_status["directories"] = {
+            "temp_dir_exists": os.path.exists(TEMP_DIR),
+            "temp_dir_writable": os.access(TEMP_DIR, os.W_OK) if os.path.exists(TEMP_DIR) else False
+        }
+
+        # Model status
+        if model_loaded:
+            health_status["model_status"] = {
+                "loaded": True,
+                "device": str(device) if device else "unknown"
+            }
+        else:
+            health_status["model_status"] = {
+                "loaded": False,
+                "device": None
+            }
+
+        return jsonify(health_status), 200
+
+    except Exception as e:
+        error_response = {
+            "status": "unhealthy",
+            "service": "drishya",
+            "error": str(e),
+            "timestamp": time.time()
+        }
+        return jsonify(error_response), 500
 
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
@@ -935,14 +990,16 @@ def download_result():
         download_name='product_replaced_image.png'
     )
 
-if __name__ == '__main__':
-    # Load model on startup
-    try:
-        print("Loading SAM model...")
-        load_model()
-        print("✅ AI model loaded successfully!")
-    except Exception as e:
-        print(f"❌ Failed to load model: {str(e)}")
-        print("The app will still start, but model loading will be attempted on first use.")
+# Load model on application startup (works for all deployment methods)
+try:
+    print("Downloading model weights")
+    load_model()
+    print("model loaded successfully!")
+except Exception as e:
+    print(f"Failed to load model: {str(e)}")
+    print("The app will still start, but model loading will be attempted on first use.")
 
-    app.run(debug=True, host='0.0.0.0', port=5000)
+if __name__ == '__main__':
+    port = int(os.getenv('PORT', 5000))
+    debug = os.getenv('FLASK_ENV') != 'production'
+    app.run(debug=debug, host='0.0.0.0', port=port)
