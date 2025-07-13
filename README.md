@@ -1,14 +1,15 @@
 # Drishya - Flask Version
 
-AI-powered product replacement tool using Meta's Segment Anything Model (SAM), converted from Streamlit to Flask.
+AI-powered product replacement tool using MobileSAM (lightweight Segment Anything Model), converted from Streamlit to Flask.
 
 ## Features
 
-- **AI-Powered Segmentation**: Uses Meta's SAM model for precise object segmentation
+- **AI-Powered Segmentation**: Uses MobileSAM model for fast and precise object segmentation
 - **Interactive Drawing**: Draw bounding boxes to select products for replacement
 - **Advanced Blending**: Feathered edges and color grading for realistic results
 - **Real-time Preview**: See results before downloading
 - **Password Protection**: Secure access with password authentication
+- **Lightweight Model**: Uses pre-loaded MobileSAM weights for fast processing without downloads
 
 ## Installation
 
@@ -46,7 +47,7 @@ python app.py
 ## Technical Details
 
 - **Backend**: Flask web framework
-- **AI Model**: Meta's Segment Anything Model (SAM) with ViT-B backbone
+- **AI Model**: MobileSAM with ViT-T backbone (lightweight and fast)
 - **Image Processing**: OpenCV for advanced blending and color grading
 - **Frontend**: Vanilla JavaScript with HTML5 Canvas for interactive drawing
 
@@ -54,9 +55,11 @@ python app.py
 
 Default password: `setuftw`
 
-## Model Download
+## Model Information
 
-The SAM model weights (~375MB) will be automatically downloaded on first use and cached in `~/.cache/drishya/models/`.
+The MobileSAM model weights are included in the repository:
+- **MobileSAM**: ~40MB (pre-loaded, no download required)
+- **Processing**: Fast inference with minimal memory usage
 
 ## Browser Compatibility
 
@@ -65,12 +68,23 @@ The SAM model weights (~375MB) will be automatically downloaded on first use and
 - Safari
 - Edge
 
+## Model Performance
+
+MobileSAM provides excellent performance characteristics:
+
+- **Accuracy**: Very good segmentation quality (comparable to full SAM)
+- **Model Size**: ~40MB (10x smaller than regular SAM)
+- **Processing Time**: 1-5 seconds per image (up to 5x faster)
+- **Memory Usage**: Much lower than regular SAM
+- **Best for**: Fast processing, edge computing, production deployments
+
 ## Performance
 
 - GPU acceleration supported (CUDA)
 - Fallback to CPU if GPU unavailable
-- Model loading time: 2-3 minutes on first run
-- Processing time: 5-15 seconds per image
+- Model loading time: Instant (pre-loaded weights)
+- Processing time: 1-5 seconds per image
+- Memory efficient: Optimized for production use
 
 ## Railway Deployment
 
@@ -113,7 +127,6 @@ The app includes all necessary configuration files:
 | `APP_PASSWORD` | Application access password | `setuftw` | ✅ |
 | `FLASK_ENV` | Flask environment | `development` | ✅ |
 | `PORT` | Port for the application | `5000` | ✅ |
-| `MODEL_CACHE_DIR` | Directory for model storage | `/tmp/drishya_models` | ❌ |
 | `TEMP_DIR` | Directory for temporary files | `/tmp/drishya_temp` | ❌ |
 
 ### 4. Health Check

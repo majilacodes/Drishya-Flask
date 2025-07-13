@@ -49,11 +49,6 @@ venv.bak/
 ehthumbs.db
 Thumbs.db
 
-# Model cache
-models/
-*.pth
-*.pt
-
 # Temporary files
 temp/
 tmp/

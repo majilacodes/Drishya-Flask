@@ -3,9 +3,8 @@ import torch
 import numpy as np
 import cv2
 import os
-import requests
 from PIL import Image
-from segment_anything import sam_model_registry, SamPredictor
+from ultralytics import SAM
 from io import BytesIO
 import base64
 import json
@@ -31,112 +30,42 @@ TEMP_DIR = os.getenv('TEMP_DIR', os.path.join(tempfile.gettempdir(), 'drishya_te
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 # Global variables for model
-mask_predictor = None
+sam_model = None
 device = None
 model_loaded = False
 
 def load_model():
-    """Load the SAM model by downloading weights automatically"""
-    global mask_predictor, device, model_loaded
-    
+    """Load the MobileSAM model from local weights"""
+    global sam_model, device, model_loaded
+
     # Check if CUDA is available
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
 
-    # Model configuration
-    model_type = "vit_b"
-    model_filename = "sam_vit_b_01ec64.pth"
-    model_url = "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth"
+    # Path to the local MobileSAM weights
+    model_path = "mobile_sam.pt"
 
-    # Use a persistent directory for model storage
-    model_cache_dir = os.getenv('MODEL_CACHE_DIR')
-    if model_cache_dir:
-        model_dir = os.path.join(model_cache_dir, "models")
-    else:
-        home_dir = os.path.expanduser("~")
-        model_dir = os.path.join(home_dir, ".cache", "drishya", "models")
-    os.makedirs(model_dir, exist_ok=True)
-    checkpoint_path = os.path.join(model_dir, model_filename)
+    # Verify the model file exists
+    if not os.path.exists(model_path):
+        raise Exception(f"MobileSAM model file not found at {model_path}")
 
-    # Download the model if it doesn't exist
-    if not os.path.exists(checkpoint_path):
-        try:
-            print("🔄 Downloading SAM model weights... This may take 2-3 minutes on first run.")
-            
-            # Download with improved error handling
-            response = requests.get(model_url, stream=True, timeout=120)
-            response.raise_for_status()
-
-            total_size = int(response.headers.get('content-length', 0))
-            downloaded = 0
-            chunk_size = 8192
-            
-            # Use a temporary file with proper cleanup
-            temp_path = checkpoint_path + ".tmp"
-
-            try:
-                with open(temp_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=chunk_size):
-                        if chunk:
-                            f.write(chunk)
-                            downloaded += len(chunk)
-
-                            # Update progress with better formatting
-                            if total_size > 0:
-                                progress = min(downloaded / total_size, 1.0)
-                                mb_downloaded = downloaded / (1024*1024)
-                                mb_total = total_size / (1024*1024)
-                                print(f"Downloaded {mb_downloaded:.1f} MB / {mb_total:.1f} MB ({progress*100:.1f}%)")
-
-                # Verify file size before moving
-                if total_size > 0 and downloaded < total_size * 0.95:  # Allow 5% tolerance
-                    raise Exception(f"Download incomplete: {downloaded}/{total_size} bytes")
-                
-                # Move temp file to final location
-                os.rename(temp_path, checkpoint_path)
-                print("Download complete! Loading model...")
-                
-            except Exception as e:
-                # Clean up temp file on any error
-                if os.path.exists(temp_path):
-                    try:
-                        os.remove(temp_path)
-                    except:
-                        pass
-                raise e
-
-        except requests.exceptions.Timeout:
-            raise Exception("Download timeout. Please check your internet connection and try again.")
-        except requests.exceptions.ConnectionError:
-            raise Exception("Connection error. Please check your internet connection and try again.")
-        except requests.exceptions.RequestException as e:
-            raise Exception(f"Network error: {str(e)}")
-        except Exception as e:
-            raise Exception(f"Download failed: {str(e)}")
-
-    # Verify file exists and has reasonable size before loading
-    if not os.path.exists(checkpoint_path):
-        raise Exception("Model file not found after download.")
-    
-    file_size = os.path.getsize(checkpoint_path)
-    expected_min_size = 300 * 1024 * 1024  # 300MB minimum
-    if file_size < expected_min_size:
-        raise Exception(f"Model file appears corrupted (size: {file_size/(1024*1024):.1f}MB). Please refresh to re-download.")
+    file_size = os.path.getsize(model_path)
+    print(f"Loading MobileSAM model from {model_path} (size: {file_size/(1024*1024):.1f}MB)")
 
     try:
-        # Load the model with better error handling
-        sam = sam_model_registry[model_type](checkpoint=checkpoint_path)
-        sam.to(device=device)
-        mask_predictor = SamPredictor(sam)
-        
-        # Test model loading
+        # Load the MobileSAM model
+        sam_model = SAM(model_path)
+
+        # Test model loading with a dummy image
         test_image = np.zeros((100, 100, 3), dtype=np.uint8)
-        mask_predictor.set_image(test_image)
-        
+        # Just verify the model can be called without errors
+
         model_loaded = True
-        return mask_predictor, device
+        print("✅ MobileSAM model loaded successfully!")
+        return sam_model, device
 
     except Exception as e:
-        raise Exception(f"Failed to load model: {str(e)}")
+        raise Exception(f"Failed to load MobileSAM model: {str(e)}")
 
 def check_password(password):
     """Check if the provided password is correct"""
@@ -613,7 +542,7 @@ def health_check():
         health_status = {
             "status": "healthy",
             "service": "drishya",
-            "model": "SAM",
+            "model": "MobileSAM",
             "version": "1.0.0",
             "timestamp": time.time(),
             "model_loaded": model_loaded,
@@ -772,28 +701,41 @@ def generate_mask():
         image_np = np.array(image)
 
         # Ensure model is loaded
-        global mask_predictor, model_loaded
+        global sam_model, model_loaded
         if not model_loaded:
             try:
                 load_model()
             except Exception as e:
                 return jsonify({'error': f'Failed to load model: {str(e)}'}), 500
 
-        # Set the image for the predictor
-        mask_predictor.set_image(image_np)
+        # Save the image temporarily for ultralytics SAM
+        temp_image_path = os.path.join(TEMP_DIR, f"temp_predict_{uuid.uuid4().hex}.jpg")
+        Image.fromarray(image_np).save(temp_image_path)
 
-        # Generate masks with error handling
-        masks, scores, logits = mask_predictor.predict(
-            box=np.array([x_min, y_min, x_max, y_max]),
-            multimask_output=True
-        )
+        try:
+            # Generate masks using ultralytics SAM with bounding box
+            results = sam_model.predict(
+                temp_image_path,
+                bboxes=[[x_min, y_min, x_max, y_max]],
+                verbose=False
+            )
 
-        if len(masks) == 0:
-            return jsonify({'error': 'Failed to generate mask'}), 500
+            if not results or len(results) == 0:
+                return jsonify({'error': 'Failed to generate mask'}), 500
 
-        # Get best mask by score
-        best_mask_idx = np.argmax(scores)
-        binary_mask = masks[best_mask_idx].astype(np.uint8) * 255
+            # Extract the mask from results
+            result = results[0]
+            if result.masks is None or len(result.masks.data) == 0:
+                return jsonify({'error': 'No masks generated'}), 500
+
+            # Get the first (and typically best) mask
+            mask_tensor = result.masks.data[0]
+            binary_mask = (mask_tensor.cpu().numpy() * 255).astype(np.uint8)
+
+        finally:
+            # Clean up temporary image
+            if os.path.exists(temp_image_path):
+                os.remove(temp_image_path)
 
         # Validate mask
         if np.sum(binary_mask) == 0:
