@@ -33,19 +33,21 @@ def start_app():
     """Start the Flask application using Gunicorn."""
     port = os.getenv('PORT', '5000')
     workers = os.getenv('WEB_CONCURRENCY', '1')
-    
+
     print(f"Starting Flask app on port {port} with {workers} workers...")
-    
-    # Use Gunicorn for production
+
+    # Memory-optimized Gunicorn configuration for 512MB RAM
     cmd = [
         'gunicorn',
         '--bind', f'0.0.0.0:{port}',
-        '--workers', str(workers),
+        '--workers', '1',  # Force single worker for memory constraints
         '--timeout', '300',  # 5 minutes timeout for model loading
         '--worker-class', 'sync',
-        '--max-requests', '1000',
-        '--max-requests-jitter', '100',
-        '--preload',
+        '--max-requests', '100',  # Lower to prevent memory accumulation
+        '--max-requests-jitter', '10',
+        '--worker-tmp-dir', '/dev/shm',  # Use shared memory for better performance
+        '--no-sendfile',  # Reduce memory usage
+        # Remove --preload to avoid loading model in master process
         'app:app'
     ]
     

@@ -14,6 +14,8 @@ import tempfile
 import uuid
 import time
 from dotenv import load_dotenv
+import gc
+import psutil
 
 # Load environment variables
 load_dotenv()
@@ -35,11 +37,11 @@ device = None
 model_loaded = False
 
 def load_model():
-    """Load the MobileSAM model from local weights"""
+    """Load the MobileSAM model from local weights with memory optimization"""
     global sam_model, device, model_loaded
 
-    # Check if CUDA is available
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # Force CPU to reduce memory usage (no CUDA on Railway anyway)
+    device = torch.device('cpu')
     print(f"Using device: {device}")
 
     # Path to the local MobileSAM weights
@@ -53,15 +55,22 @@ def load_model():
     print(f"Loading MobileSAM model from {model_path} (size: {file_size/(1024*1024):.1f}MB)")
 
     try:
-        # Load the MobileSAM model
-        sam_model = SAM(model_path)
+        # Set PyTorch to use minimal threads to reduce memory overhead
+        torch.set_num_threads(1)
 
-        # Test model loading with a dummy image
-        test_image = np.zeros((100, 100, 3), dtype=np.uint8)
-        # Just verify the model can be called without errors
+        # Log memory before model loading
+        log_memory_usage("Before model loading")
+
+        # Load the MobileSAM model with memory optimization
+        sam_model = SAM(model_path)
 
         model_loaded = True
         print("✅ MobileSAM model loaded successfully!")
+
+        # Force garbage collection after model loading
+        gc.collect()
+        log_memory_usage("After model loading")
+
         return sam_model, device
 
     except Exception as e:
@@ -92,6 +101,17 @@ def save_temp_image(image_data, suffix=''):
 def get_temp_image_path(filename):
     """Get full path for temporary image file"""
     return os.path.join(TEMP_DIR, filename)
+
+def log_memory_usage(context=""):
+    """Log current memory usage for debugging."""
+    try:
+        process = psutil.Process(os.getpid())
+        memory_info = process.memory_info()
+        rss_mb = round(memory_info.rss / 1024 / 1024, 2)
+        available_mb = round(psutil.virtual_memory().available / 1024 / 1024, 2)
+        print(f"[MEMORY] {context}: RSS={rss_mb}MB, Available={available_mb}MB")
+    except Exception as e:
+        print(f"Error logging memory: {e}")
 
 def cleanup_old_files():
     """Clean up old temporary files (older than 1 hour)"""
@@ -616,13 +636,16 @@ def upload_image():
 
         image_np = np.array(image)
 
-        # Resize image if too large (max 1920px width to prevent memory issues)
-        max_width = 1920
+        # More aggressive resizing for 512MB RAM constraint (max 1280px width)
+        max_width = 1280
         if image_np.shape[1] > max_width:
             scale_factor = max_width / image_np.shape[1]
             new_width = max_width
             new_height = int(image_np.shape[0] * scale_factor)
-            image_resized = cv2.resize(image_np, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
+            image_resized = cv2.resize(image_np, (new_width, new_height), interpolation=cv2.INTER_AREA)
+            # Clear original large image from memory immediately
+            del image_np
+            image_np = image_resized.copy()
         else:
             image_resized = image_np
 
@@ -645,13 +668,21 @@ def upload_image():
         session['original_shape'] = image_np.shape
         session['display_shape'] = image_resized.shape
 
-        return jsonify({
+        # Store dimensions before cleanup
+        result_data = {
             'success': True,
             'width': image_resized.shape[1],
             'height': image_resized.shape[0],
             'original_width': image_np.shape[1],
             'original_height': image_np.shape[0]
-        })
+        }
+
+        # Clean up memory
+        del image_np, image_resized
+        import gc
+        gc.collect()
+
+        return jsonify(result_data)
 
     except Exception as e:
         return jsonify({'error': f'Failed to process image: {str(e)}'}), 500
@@ -732,6 +763,9 @@ def generate_mask():
             mask_tensor = result.masks.data[0]
             binary_mask = (mask_tensor.cpu().numpy() * 255).astype(np.uint8)
 
+            # Clean up GPU/CPU tensors immediately
+            del mask_tensor, results
+
         finally:
             # Clean up temporary image
             if os.path.exists(temp_image_path):
@@ -768,6 +802,11 @@ def generate_mask():
         Image.fromarray(mask_vis).save(vis_buffer, format='JPEG', quality=85)
         vis_filename = save_temp_image(vis_buffer.getvalue(), 'mask_vis')
         session['mask_visualization_file'] = vis_filename
+
+        # Clean up memory
+        del binary_mask, mask_resized, mask_vis, display_np, image_np
+        import gc
+        gc.collect()
 
         return jsonify({
             'success': True
@@ -932,14 +971,9 @@ def download_result():
         download_name='product_replaced_image.png'
     )
 
-# Load model on application startup (works for all deployment methods)
-try:
-    print("Downloading model weights")
-    load_model()
-    print("model loaded successfully!")
-except Exception as e:
-    print(f"Failed to load model: {str(e)}")
-    print("The app will still start, but model loading will be attempted on first use.")
+# Don't load model on startup to save memory - load only when needed
+print("App starting - model will be loaded on first use to conserve memory")
+log_memory_usage("App startup")
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))

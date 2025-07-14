@@ -146,9 +146,35 @@ The app includes a comprehensive health check endpoint at `/health` that provide
 - **Error Handling**: Robust error handling for production deployment
 - **Resource Management**: Optimized for Railway's resource constraints
 
-### 6. Troubleshooting
+### 6. Memory-Optimized Deployment (512MB RAM)
+
+For deployment on Railway's 512MB plan, use these optimized settings:
+
+**Environment Variables for 512MB:**
+```
+SECRET_KEY=your-super-secret-key-here
+APP_PASSWORD=your-secure-password
+FLASK_ENV=production
+PORT=5000
+WEB_CONCURRENCY=1
+WORKERS=1
+OMP_NUM_THREADS=1
+MKL_NUM_THREADS=1
+NUMEXPR_NUM_THREADS=1
+TEMP_DIR=/tmp/drishya_temp
+```
+
+**Memory Optimizations Applied:**
+- Single worker configuration
+- Lazy model loading (loads on first use)
+- Aggressive image resizing (max 1280px width)
+- Immediate memory cleanup after processing
+- CPU-only PyTorch with minimal threads
+- Reduced max requests per worker
+
+### 7. Troubleshooting
 
 - **Model Loading Issues**: Check logs for download progress and errors
-- **Memory Issues**: Model requires ~2GB RAM, ensure adequate Railway plan
-- **Timeout Issues**: Initial startup may take 2-3 minutes for model download
-- **Health Check**: Use `/health` endpoint to diagnose issues
+- **Memory Issues**: App optimized for 512MB RAM with MobileSAM
+- **Timeout Issues**: Initial model load may take 30-60 seconds on first use
+- **Health Check**: Use `/health` endpoint to diagnose issues and monitor memory usage
